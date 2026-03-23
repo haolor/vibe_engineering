@@ -13,6 +13,7 @@ public class GoalPlanRequest {
 
     // optional (single-user MVP có thể bỏ)
     private Long profileId;
+    private Long userId;
 
     public String getGoalType() {
         return goalType;
@@ -52,6 +53,14 @@ public class GoalPlanRequest {
 
     public void setProfileId(Long profileId) {
         this.profileId = profileId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }
 

@@ -4,11 +4,15 @@ import '../api/api_client.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ApiClient apiClient;
+  final int userId;
+  final ProfileResponse? initialProfile;
   final void Function(int profileId) onProfileSaved;
 
   const ProfileScreen({
     super.key,
     required this.apiClient,
+    required this.userId,
+    required this.initialProfile,
     required this.onProfileSaved,
   });
 
@@ -27,6 +31,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = false;
 
   double? _bmi;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.initialProfile;
+    if (p != null) {
+      _heightCmController.text = p.heightCm.toStringAsFixed(1);
+      _weightKgController.text = p.weightKg.toStringAsFixed(1);
+      _ageController.text = p.age.toString();
+      _gender = p.gender;
+      _bmi = p.bmi;
+    }
+  }
 
   @override
   void dispose() {
@@ -70,6 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final resp = await widget.apiClient.upsertProfile(
         ProfileRequest(
+          userId: widget.userId,
           heightCm: heightCm,
           heightFt: heightFt,
           weightKg: weightKg,

@@ -33,20 +33,6 @@ public class WeightService {
         wl.setLogDate(logDate);
         wl.setWeightKg(weightKg);
 
-        // simple upsert: if exists by unique(profile_id, log_date), update weight
-        // Since we don't have repository method for finding row, rely on exists and then update by query.
-        if (weightLogRepository.existsByProfileIdAndLogDate(profile.getId(), logDate)) {
-            WeightLog existing = weightLogRepository.findByProfileIdAndLogDateBetweenOrderByLogDateAsc(profile.getId(), logDate, logDate)
-                    .stream()
-                    .findFirst()
-                    .orElse(null);
-            if (existing != null) {
-                existing.setWeightKg(weightKg);
-                WeightLog savedExisting = weightLogRepository.save(existing);
-                return toResponse(savedExisting);
-            }
-        }
-
         WeightLog saved = weightLogRepository.save(wl);
         return toResponse(saved);
     }

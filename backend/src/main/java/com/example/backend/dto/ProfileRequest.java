@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Min;
 
 public class ProfileRequest {
 
+    private Long userId;
+
     // One of heightCm / heightFt should be provided.
     private Double heightCm;
     private Double heightFt;
@@ -64,6 +66,14 @@ public class ProfileRequest {
 
     public void setGender(String gender) {
         this.gender = gender;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }
 

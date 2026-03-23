@@ -34,6 +34,9 @@ public class NutritionProfile {
     @Column(name = "bmi", nullable = false)
     private double bmi;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -102,6 +105,14 @@ public class NutritionProfile {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }
 

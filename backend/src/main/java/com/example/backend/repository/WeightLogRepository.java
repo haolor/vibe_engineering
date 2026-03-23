@@ -8,8 +8,6 @@ import java.util.List;
 
 public interface WeightLogRepository extends JpaRepository<WeightLog, Long> {
 
-    boolean existsByProfileIdAndLogDate(Long profileId, LocalDate logDate);
-
     List<WeightLog> findByProfileIdAndLogDateBetweenOrderByLogDateAsc(
             Long profileId,
             LocalDate from,

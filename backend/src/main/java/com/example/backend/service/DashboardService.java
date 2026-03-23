@@ -3,9 +3,11 @@ package com.example.backend.service;
 import com.example.backend.dto.CaloriesPointDto;
 import com.example.backend.dto.DashboardResponse;
 import com.example.backend.dto.WeightPointDto;
+import com.example.backend.entity.CalorieLog;
 import com.example.backend.entity.DietPlan;
 import com.example.backend.entity.NutritionProfile;
 import com.example.backend.entity.WeightLog;
+import com.example.backend.repository.CalorieLogRepository;
 import com.example.backend.repository.DietPlanRepository;
 import com.example.backend.repository.NutritionProfileRepository;
 import com.example.backend.repository.WeightLogRepository;
@@ -21,15 +23,18 @@ public class DashboardService {
 
     private final NutritionProfileRepository profileRepository;
     private final WeightLogRepository weightLogRepository;
+    private final CalorieLogRepository calorieLogRepository;
     private final DietPlanRepository dietPlanRepository;
 
     public DashboardService(
             NutritionProfileRepository profileRepository,
             WeightLogRepository weightLogRepository,
+            CalorieLogRepository calorieLogRepository,
             DietPlanRepository dietPlanRepository
     ) {
         this.profileRepository = profileRepository;
         this.weightLogRepository = weightLogRepository;
+        this.calorieLogRepository = calorieLogRepository;
         this.dietPlanRepository = dietPlanRepository;
     }
 
@@ -48,10 +53,25 @@ public class DashboardService {
         }
 
         List<CaloriesPointDto> calories = new ArrayList<>();
+        List<CalorieLog> intakeLogs = calorieLogRepository.findByProfileIdAndLogDateBetweenOrderByLogDateAsc(
+                profile.getId(),
+                from,
+                to
+        );
+
+        if (!intakeLogs.isEmpty()) {
+            for (CalorieLog log : intakeLogs) {
+                CaloriesPointDto c = new CaloriesPointDto();
+                c.setDate(log.getLogDate().toString());
+                c.setCaloriesPerDay(log.getCaloriesIn());
+                calories.add(c);
+            }
+        }
+
         DietPlan plan = dietPlanRepository.findTopByProfileIdOrderByIdDesc(profile.getId())
                 .orElse(null);
 
-        if (plan != null) {
+        if (plan != null && calories.isEmpty()) {
             LocalDate planStart = plan.getStartDate();
             LocalDate planEnd = plan.getEndDate();
 

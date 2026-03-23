@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.GoalPlanRequest;
+import com.example.backend.dto.BootstrapResponse;
 import com.example.backend.dto.PlanResponse;
 import com.example.backend.dto.ProfileRequest;
 import com.example.backend.dto.ProfileResponse;
@@ -49,8 +50,8 @@ public class NutritionService {
 
         double bmi = BasicNutritionCalculator.calculateBmi(heightCm, weightKg);
 
-        NutritionProfile profile = profileRepository.findTopByOrderByIdDesc()
-                .orElseGet(NutritionProfile::new);
+        NutritionProfile profile = new NutritionProfile();
+        profile.setUserId(req.getUserId());
 
         profile.setHeightCm(heightCm);
         profile.setWeightKg(weightKg);
@@ -72,7 +73,7 @@ public class NutritionService {
 
     @Transactional
     public PlanResponse createPlan(GoalPlanRequest req) {
-        NutritionProfile profile = resolveProfile(req.getProfileId());
+        NutritionProfile profile = resolveProfile(req.getProfileId(), req.getUserId());
         double heightCm = profile.getHeightCm();
         double currentWeightKg = profile.getWeightKg();
         int age = profile.getAge();
@@ -154,6 +155,8 @@ public class NutritionService {
             PlanResponse resp = new PlanResponse();
             resp.setPlanId(saved.getId());
             resp.setProfileId(profile.getId());
+            resp.setGoalType(saved.getGoalType());
+            resp.setTargetWeightKg(saved.getTargetWeightKg());
             resp.setStartDate(start);
             resp.setEndDate(end);
             resp.setCaloriesPerDay(caloriesPerDay);
@@ -165,12 +168,61 @@ public class NutritionService {
     }
 
     public NutritionProfile resolveProfile(Long profileId) {
+        return resolveProfile(profileId, null);
+    }
+
+    public NutritionProfile resolveProfile(Long profileId, Long userId) {
         if (profileId != null) {
             return profileRepository.findById(profileId)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy profileId=" + profileId));
         }
+        if (userId != null) {
+            return profileRepository.findTopByUserIdOrderByIdDesc(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Chua co chi so cho userId=" + userId));
+        }
         return profileRepository.findTopByOrderByIdDesc()
                 .orElseThrow(() -> new IllegalArgumentException("Chưa có profile. Hãy nhập BMI trước."));
+    }
+
+    @Transactional(readOnly = true)
+    public BootstrapResponse getBootstrap(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId la bat buoc");
+        }
+        NutritionProfile profile = profileRepository.findTopByUserIdOrderByIdDesc(userId).orElse(null);
+        DietPlan plan = null;
+        if (profile != null) {
+            plan = dietPlanRepository.findTopByProfileIdOrderByIdDesc(profile.getId()).orElse(null);
+        }
+
+        BootstrapResponse resp = new BootstrapResponse();
+        resp.setLatestProfile(profile == null ? null : toProfileResponse(profile));
+        resp.setLatestPlan(plan == null ? null : toPlanResponse(plan));
+        return resp;
+    }
+
+    private ProfileResponse toProfileResponse(NutritionProfile saved) {
+        ProfileResponse resp = new ProfileResponse();
+        resp.setProfileId(saved.getId());
+        resp.setHeightCm(saved.getHeightCm());
+        resp.setWeightKg(saved.getWeightKg());
+        resp.setAge(saved.getAge());
+        resp.setGender(saved.getGender());
+        resp.setBmi(saved.getBmi());
+        return resp;
+    }
+
+    private PlanResponse toPlanResponse(DietPlan saved) {
+        PlanResponse resp = new PlanResponse();
+        resp.setPlanId(saved.getId());
+        resp.setProfileId(saved.getProfileId());
+        resp.setGoalType(saved.getGoalType());
+        resp.setTargetWeightKg(saved.getTargetWeightKg());
+        resp.setStartDate(saved.getStartDate());
+        resp.setEndDate(saved.getEndDate());
+        resp.setCaloriesPerDay(saved.getCaloriesPerDay());
+        resp.setPlanJson(objectMapper.convertValue(saved.getPlanJson(), MealPlanDto.class));
+        return resp;
     }
 }
 

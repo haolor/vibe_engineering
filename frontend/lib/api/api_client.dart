@@ -1,12 +1,33 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class ApiClient {
   final String baseUrl;
   const ApiClient({required this.baseUrl});
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
+
+  Future<AuthResponse> register(RegisterRequest req) async {
+    final resp = await http.post(
+      _uri('/api/auth/register'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode(req.toJson()),
+    );
+    _throwIfNotOk(resp);
+    return AuthResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
+
+  Future<AuthResponse> login(LoginRequest req) async {
+    final resp = await http.post(
+      _uri('/api/auth/login'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode(req.toJson()),
+    );
+    _throwIfNotOk(resp);
+    return AuthResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
 
   Future<ProfileResponse> upsertProfile(ProfileRequest req) async {
     final resp = await http.post(
@@ -56,6 +77,66 @@ class ApiClient {
     return DashboardResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
   }
 
+  Future<BootstrapResponse> getBootstrap(int userId) async {
+    final resp = await http.get(
+      _uri('/api/bootstrap').replace(queryParameters: {'userId': userId.toString()}),
+      headers: const {'Content-Type': 'application/json'},
+    );
+    _throwIfNotOk(resp);
+    return BootstrapResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
+
+  Future<MealAnalyzeResponse> analyzeMeal(MealAnalyzeRequest req) async {
+    final resp = await http.post(
+      _uri('/api/meals/analyze'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode(req.toJson()),
+    );
+    _throwIfNotOk(resp);
+    return MealAnalyzeResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
+
+  Future<AutoSubstituteResponse> autoSubstitute(AutoSubstituteRequest req) async {
+    final resp = await http.post(
+      _uri('/api/meals/substitute/auto'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode(req.toJson()),
+    );
+    _throwIfNotOk(resp);
+    return AutoSubstituteResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
+
+  Future<ManualSubstituteResponse> manualSubstitute(ManualSubstituteRequest req) async {
+    final resp = await http.post(
+      _uri('/api/meals/substitute/manual'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode(req.toJson()),
+    );
+    _throwIfNotOk(resp);
+    return ManualSubstituteResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
+
+  Future<CalorieLogResponse> addCalories(CalorieLogRequest req) async {
+    final resp = await http.post(
+      _uri('/api/calories'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode(req.toJson()),
+    );
+    _throwIfNotOk(resp);
+    return CalorieLogResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
+
+  Future<ImageUploadResponse> uploadImage(XFile file) async {
+    final bytes = await file.readAsBytes();
+    final request = http.MultipartRequest('POST', _uri('/api/images/upload'))
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: file.name));
+
+    final streamed = await request.send();
+    final resp = await http.Response.fromStream(streamed);
+    _throwIfNotOk(resp);
+    return ImageUploadResponse.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+  }
+
   void _throwIfNotOk(http.Response resp) {
     if (resp.statusCode >= 200 && resp.statusCode < 300) return;
     throw ApiException(
@@ -76,7 +157,85 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+class RegisterRequest {
+  final String email;
+  final String password;
+  final String? fullName;
+
+  RegisterRequest({
+    required this.email,
+    required this.password,
+    required this.fullName,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'email': email,
+        'password': password,
+        'fullName': fullName,
+      };
+}
+
+class LoginRequest {
+  final String email;
+  final String password;
+
+  LoginRequest({
+    required this.email,
+    required this.password,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'email': email,
+        'password': password,
+      };
+}
+
+class AuthResponse {
+  final int userId;
+  final String email;
+  final String? fullName;
+  final String? message;
+
+  AuthResponse({
+    required this.userId,
+    required this.email,
+    required this.fullName,
+    required this.message,
+  });
+
+  factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    return AuthResponse(
+      userId: json['userId'] as int,
+      email: json['email'] as String,
+      fullName: json['fullName'] as String?,
+      message: json['message'] as String?,
+    );
+  }
+}
+
+class BootstrapResponse {
+  final ProfileResponse? latestProfile;
+  final PlanResponse? latestPlan;
+
+  BootstrapResponse({
+    required this.latestProfile,
+    required this.latestPlan,
+  });
+
+  factory BootstrapResponse.fromJson(Map<String, dynamic> json) {
+    return BootstrapResponse(
+      latestProfile: json['latestProfile'] == null
+          ? null
+          : ProfileResponse.fromJson(json['latestProfile'] as Map<String, dynamic>),
+      latestPlan: json['latestPlan'] == null
+          ? null
+          : PlanResponse.fromJson(json['latestPlan'] as Map<String, dynamic>),
+    );
+  }
+}
+
 class ProfileRequest {
+  final int? userId;
   final double? heightCm;
   final double? heightFt;
   final double? weightKg;
@@ -85,6 +244,7 @@ class ProfileRequest {
   final String gender; // "Nam" / "Nữ"
 
   ProfileRequest({
+    required this.userId,
     required this.heightCm,
     required this.heightFt,
     required this.weightKg,
@@ -94,6 +254,7 @@ class ProfileRequest {
   });
 
   Map<String, dynamic> toJson() => {
+        'userId': userId,
         'heightCm': heightCm,
         'heightFt': heightFt,
         'weightKg': weightKg,
@@ -138,6 +299,7 @@ class GoalPlanRequest {
   final String timeframeType; // "DAYS"/"WEEKS"/"MONTHS"/"YEARS"
   final int timeframeValue;
   final int? profileId;
+  final int? userId;
 
   GoalPlanRequest({
     required this.goalType,
@@ -145,6 +307,7 @@ class GoalPlanRequest {
     required this.timeframeType,
     required this.timeframeValue,
     required this.profileId,
+    required this.userId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -153,12 +316,15 @@ class GoalPlanRequest {
         'timeframeType': timeframeType,
         'timeframeValue': timeframeValue,
         'profileId': profileId,
+        'userId': userId,
       };
 }
 
 class PlanResponse {
   final int planId;
   final int profileId;
+  final String? goalType;
+  final double? targetWeightKg;
   final DateTime startDate;
   final DateTime endDate;
   final double caloriesPerDay;
@@ -167,6 +333,8 @@ class PlanResponse {
   PlanResponse({
     required this.planId,
     required this.profileId,
+    required this.goalType,
+    required this.targetWeightKg,
     required this.startDate,
     required this.endDate,
     required this.caloriesPerDay,
@@ -177,6 +345,8 @@ class PlanResponse {
     return PlanResponse(
       planId: json['planId'] as int,
       profileId: json['profileId'] as int,
+      goalType: json['goalType'] as String?,
+      targetWeightKg: (json['targetWeightKg'] as num?)?.toDouble(),
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
       caloriesPerDay: (json['caloriesPerDay'] as num).toDouble(),
@@ -226,6 +396,258 @@ class WeightLogResponse {
       logId: json['logId'] as int,
       logDate: DateTime.parse(json['logDate'] as String),
       weightKg: (json['weightKg'] as num).toDouble(),
+    );
+  }
+}
+
+class CalorieLogRequest {
+  final int? profileId;
+  final double caloriesIn;
+  final DateTime? logDate;
+  final int? mealAnalysisId;
+  final String? note;
+
+  CalorieLogRequest({
+    required this.profileId,
+    required this.caloriesIn,
+    required this.logDate,
+    required this.mealAnalysisId,
+    required this.note,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'profileId': profileId,
+        'caloriesIn': caloriesIn,
+        'logDate': logDate == null ? null : _dateOnlyStatic(logDate!),
+        'mealAnalysisId': mealAnalysisId,
+        'note': note,
+      };
+}
+
+class CalorieLogResponse {
+  final int logId;
+  final DateTime logDate;
+  final double caloriesIn;
+
+  CalorieLogResponse({
+    required this.logId,
+    required this.logDate,
+    required this.caloriesIn,
+  });
+
+  factory CalorieLogResponse.fromJson(Map<String, dynamic> json) {
+    return CalorieLogResponse(
+      logId: json['logId'] as int,
+      logDate: DateTime.parse(json['logDate'] as String),
+      caloriesIn: (json['caloriesIn'] as num).toDouble(),
+    );
+  }
+}
+
+class ImageUploadResponse {
+  final String secureUrl;
+  final String publicId;
+
+  ImageUploadResponse({
+    required this.secureUrl,
+    required this.publicId,
+  });
+
+  factory ImageUploadResponse.fromJson(Map<String, dynamic> json) {
+    return ImageUploadResponse(
+      secureUrl: json['secureUrl'] as String,
+      publicId: json['publicId'] as String,
+    );
+  }
+}
+
+class MealIngredientInput {
+  final String name;
+  final String? quantityText;
+  final double? amount;
+
+  MealIngredientInput({
+    required this.name,
+    required this.quantityText,
+    required this.amount,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'quantityText': quantityText,
+        'amount': amount,
+      };
+}
+
+class MealAnalyzeRequest {
+  final int? profileId;
+  final String mealName;
+  final String? imageUrl;
+  final List<MealIngredientInput> ingredients;
+
+  MealAnalyzeRequest({
+    required this.profileId,
+    required this.mealName,
+    required this.imageUrl,
+    required this.ingredients,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'profileId': profileId,
+        'mealName': mealName,
+        'imageUrl': imageUrl,
+        'ingredients': ingredients.map((e) => e.toJson()).toList(),
+      };
+}
+
+class MealIngredientResult {
+  final String name;
+  final String? quantityText;
+  final double caloriesEstimated;
+
+  MealIngredientResult({
+    required this.name,
+    required this.quantityText,
+    required this.caloriesEstimated,
+  });
+
+  factory MealIngredientResult.fromJson(Map<String, dynamic> json) {
+    return MealIngredientResult(
+      name: json['name'] as String,
+      quantityText: json['quantityText'] as String?,
+      caloriesEstimated: (json['caloriesEstimated'] as num).toDouble(),
+    );
+  }
+}
+
+class MealAnalyzeResponse {
+  final int mealAnalysisId;
+  final String mealName;
+  final double totalCalories;
+  final List<MealIngredientResult> ingredients;
+
+  MealAnalyzeResponse({
+    required this.mealAnalysisId,
+    required this.mealName,
+    required this.totalCalories,
+    required this.ingredients,
+  });
+
+  factory MealAnalyzeResponse.fromJson(Map<String, dynamic> json) {
+    return MealAnalyzeResponse(
+      mealAnalysisId: json['mealAnalysisId'] as int,
+      mealName: json['mealName'] as String,
+      totalCalories: (json['totalCalories'] as num).toDouble(),
+      ingredients: (json['ingredients'] as List<dynamic>? ?? [])
+          .map((e) => MealIngredientResult.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class AutoSubstituteRequest {
+  final int? profileId;
+  final double? originalCalories;
+  final int? originalMealAnalysisId;
+
+  AutoSubstituteRequest({
+    required this.profileId,
+    required this.originalCalories,
+    required this.originalMealAnalysisId,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'profileId': profileId,
+        'originalCalories': originalCalories,
+        'originalMealAnalysisId': originalMealAnalysisId,
+      };
+}
+
+class SubstituteOption {
+  final String mealName;
+  final double calories;
+  final double deltaCalories;
+
+  SubstituteOption({
+    required this.mealName,
+    required this.calories,
+    required this.deltaCalories,
+  });
+
+  factory SubstituteOption.fromJson(Map<String, dynamic> json) {
+    return SubstituteOption(
+      mealName: json['mealName'] as String,
+      calories: (json['calories'] as num).toDouble(),
+      deltaCalories: (json['deltaCalories'] as num).toDouble(),
+    );
+  }
+}
+
+class AutoSubstituteResponse {
+  final double originalCalories;
+  final List<SubstituteOption> options;
+
+  AutoSubstituteResponse({
+    required this.originalCalories,
+    required this.options,
+  });
+
+  factory AutoSubstituteResponse.fromJson(Map<String, dynamic> json) {
+    return AutoSubstituteResponse(
+      originalCalories: (json['originalCalories'] as num).toDouble(),
+      options: (json['options'] as List<dynamic>? ?? [])
+          .map((e) => SubstituteOption.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class ManualSubstituteRequest {
+  final int? profileId;
+  final double? originalCalories;
+  final int? originalMealAnalysisId;
+  final String substituteMealName;
+  final List<MealIngredientInput> ingredients;
+
+  ManualSubstituteRequest({
+    required this.profileId,
+    required this.originalCalories,
+    required this.originalMealAnalysisId,
+    required this.substituteMealName,
+    required this.ingredients,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'profileId': profileId,
+        'originalCalories': originalCalories,
+        'originalMealAnalysisId': originalMealAnalysisId,
+        'substituteMealName': substituteMealName,
+        'ingredients': ingredients.map((e) => e.toJson()).toList(),
+      };
+}
+
+class ManualSubstituteResponse {
+  final String substituteMealName;
+  final double originalCalories;
+  final double substituteCalories;
+  final bool acceptable;
+  final String note;
+
+  ManualSubstituteResponse({
+    required this.substituteMealName,
+    required this.originalCalories,
+    required this.substituteCalories,
+    required this.acceptable,
+    required this.note,
+  });
+
+  factory ManualSubstituteResponse.fromJson(Map<String, dynamic> json) {
+    return ManualSubstituteResponse(
+      substituteMealName: json['substituteMealName'] as String,
+      originalCalories: (json['originalCalories'] as num).toDouble(),
+      substituteCalories: (json['substituteCalories'] as num).toDouble(),
+      acceptable: json['acceptable'] as bool,
+      note: json['note'] as String,
     );
   }
 }
@@ -349,4 +771,8 @@ class MealDto {
     );
   }
 }
+
+String _dateOnlyStatic(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api/api_client.dart';
+import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/goal_plan_screen.dart';
 import 'screens/profile_screen.dart';
@@ -65,23 +66,65 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final ApiClient _apiClient = const ApiClient(baseUrl: _baseUrl);
 
+  AuthResponse? _auth;
+  bool _bootstrapping = false;
   int _tabIndex = 0;
   int? _profileId;
+  ProfileResponse? _latestProfile;
   PlanResponse? _currentPlan;
+
+  Future<void> _bootstrapAfterLogin(AuthResponse auth) async {
+    setState(() {
+      _auth = auth;
+      _bootstrapping = true;
+    });
+    try {
+      final bootstrap = await _apiClient.getBootstrap(auth.userId);
+      if (!mounted) return;
+      setState(() {
+        _latestProfile = bootstrap.latestProfile;
+        _profileId = bootstrap.latestProfile?.profileId;
+        _currentPlan = bootstrap.latestPlan;
+      });
+    } catch (_) {
+      // Allow user continue even when no data exists yet.
+    } finally {
+      if (mounted) {
+        setState(() => _bootstrapping = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    if (_auth == null) {
+      return AuthScreen(
+        apiClient: _apiClient,
+        onAuthenticated: (auth) {
+          _bootstrapAfterLogin(auth);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(auth.message ?? 'Xac thuc thanh cong')),
+          );
+        },
+      );
+    }
+
+    if (_bootstrapping) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final pages = <Widget>[
       ProfileScreen(
         apiClient: _apiClient,
+        userId: _auth!.userId,
+        initialProfile: _latestProfile,
         onProfileSaved: (id) {
-          setState(() => _profileId = id);
+          setState(() {
+            _profileId = id;
+            _latestProfile = null;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Lưu profile BMI thành công')),
           );
@@ -89,6 +132,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       GoalPlanScreen(
         apiClient: _apiClient,
+        userId: _auth!.userId,
         profileId: _profileId,
         initialPlan: _currentPlan,
         onPlanCreated: (plan) {
@@ -101,12 +145,28 @@ class _MyHomePageState extends State<MyHomePage> {
       DashboardScreen(
         apiClient: _apiClient,
         profileId: _profileId,
+        currentPlan: _currentPlan,
       ),
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text('${widget.title} • ${_auth!.email}'),
+        actions: [
+          IconButton(
+            tooltip: 'Dang xuat',
+            onPressed: () {
+              setState(() {
+                _auth = null;
+                _latestProfile = null;
+                _profileId = null;
+                _currentPlan = null;
+                _tabIndex = 0;
+              });
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
       body: pages[_tabIndex],
       bottomNavigationBar: BottomNavigationBar(

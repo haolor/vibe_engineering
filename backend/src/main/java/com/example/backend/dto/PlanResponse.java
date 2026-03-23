@@ -6,6 +6,8 @@ public class PlanResponse {
 
     private Long planId;
     private Long profileId;
+    private String goalType;
+    private Double targetWeightKg;
     private LocalDate startDate;
     private LocalDate endDate;
     private double caloriesPerDay;
@@ -26,6 +28,22 @@ public class PlanResponse {
 
     public void setProfileId(Long profileId) {
         this.profileId = profileId;
+    }
+
+    public String getGoalType() {
+        return goalType;
+    }
+
+    public void setGoalType(String goalType) {
+        this.goalType = goalType;
+    }
+
+    public Double getTargetWeightKg() {
+        return targetWeightKg;
+    }
+
+    public void setTargetWeightKg(Double targetWeightKg) {
+        this.targetWeightKg = targetWeightKg;
     }
 
     public LocalDate getStartDate() {

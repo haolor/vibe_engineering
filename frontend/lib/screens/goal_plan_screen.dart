@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 
 class GoalPlanScreen extends StatefulWidget {
   final ApiClient apiClient;
+  final int userId;
   final int? profileId;
   final PlanResponse? initialPlan;
   final void Function(PlanResponse plan) onPlanCreated;
@@ -11,6 +12,7 @@ class GoalPlanScreen extends StatefulWidget {
   const GoalPlanScreen({
     super.key,
     required this.apiClient,
+    required this.userId,
     required this.profileId,
     required this.initialPlan,
     required this.onPlanCreated,
@@ -30,6 +32,17 @@ class _GoalPlanScreenState extends State<GoalPlanScreen> {
   bool _loading = false;
 
   PlanResponse? _plan;
+
+  String _goalTypeLabel(String? goalType) {
+    switch (goalType) {
+      case 'GIAM':
+        return 'Giảm cân';
+      case 'TANG':
+        return 'Tăng cân';
+      default:
+        return goalType ?? '-';
+    }
+  }
 
   @override
   void initState() {
@@ -78,6 +91,7 @@ class _GoalPlanScreenState extends State<GoalPlanScreen> {
           timeframeType: _timeframeType,
           timeframeValue: timeframeValue,
           profileId: widget.profileId,
+          userId: widget.userId,
         ),
       );
 
@@ -182,20 +196,34 @@ class _GoalPlanScreenState extends State<GoalPlanScreen> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-            Text('Ngày 1: ${_plan!.planJson.days.isNotEmpty ? _plan!.planJson.days.first.date : '-'}'),
+            Text('Nhu cầu: ${_goalTypeLabel(_plan!.goalType)}'),
+            const SizedBox(height: 8),
+            if ((_plan!.targetWeightKg ?? 0) > 0)
+              Text(
+                'Cân nặng mục tiêu đã nhập: ${_plan!.targetWeightKg!.toStringAsFixed(1)} kg',
+              ),
+            if ((_plan!.targetWeightKg ?? 0) > 0) const SizedBox(height: 8),
+            Text('Tổng số ngày: ${_plan!.planJson.days.length}'),
             const SizedBox(height: 8),
             ..._plan!.planJson.days.isNotEmpty
-                ? _plan!.planJson.days.first.meals.map((m) {
+                ? _plan!.planJson.days.map((day) {
                     return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        title: Text(m.name),
-                        subtitle: Text('${m.mealType} • ${m.description}'),
-                        trailing: Text('${m.caloriesEstimated.toStringAsFixed(0)} kcal'),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ExpansionTile(
+                        initiallyExpanded: day.dayIndex == 1,
+                        title: Text('Ngày ${day.dayIndex}: ${day.date}'),
+                        subtitle: Text('${day.meals.length} bữa'),
+                        children: day.meals.map((m) {
+                          return ListTile(
+                            title: Text(m.name),
+                            subtitle: Text('${m.mealType} • ${m.description}'),
+                            trailing: Text('${m.caloriesEstimated.toStringAsFixed(0)} kcal'),
+                          );
+                        }).toList(),
                       ),
                     );
                   }).toList()
-                : [const Text('Chưa có dữ liệu ngày 1')],
+                : [const Text('Chưa có dữ liệu lộ trình')],
           ],
 
           if (widget.profileId == null) ...[
