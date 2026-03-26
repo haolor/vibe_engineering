@@ -28,7 +28,7 @@ public class ProfileController {
     }
 
     @GetMapping("/bootstrap")
-    public BootstrapResponse bootstrap(@RequestParam Long userId) {
+    public BootstrapResponse bootstrap(@RequestParam(name = "userId") Long userId) {
         return nutritionService.getBootstrap(userId);
     }
 }

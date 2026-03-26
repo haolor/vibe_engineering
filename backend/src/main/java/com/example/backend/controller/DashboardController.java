@@ -22,9 +22,9 @@ public class DashboardController {
 
     @GetMapping("/dashboard")
     public DashboardResponse getDashboard(
-            @RequestParam(required = false) Long profileId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+            @RequestParam(name = "profileId", required = false) Long profileId,
+            @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
         LocalDate now = LocalDate.now();
         LocalDate fromEffective = from != null ? from : now.minusDays(30);
