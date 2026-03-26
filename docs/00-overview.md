@@ -33,6 +33,9 @@ Backend đọc biến môi trường từ `backend/.env`:
 Nếu `GEMINI_AI_KEY` rỗng/không set thì `/api/plan` sẽ fallback sang heuristic (không cần LLM).
 
 ## Map tài liệu
+## Setup
+- `docs/00-setup-checklist.md`
+
 ## Backend
 - `docs/backend/01-auth.md`
 - `docs/backend/02-profile.md`
@@ -43,6 +46,7 @@ Nếu `GEMINI_AI_KEY` rỗng/không set thì `/api/plan` sẽ fallback sang heur
 - `docs/backend/07-weights.md`
 - `docs/backend/08-images.md`
 - `docs/backend/09-database.md`
+- `docs/backend/10-smoke-test-endpoints.md`
 
 ## Frontend
 - `docs/frontend/01-app.md`
