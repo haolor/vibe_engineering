@@ -80,6 +80,11 @@ DB_PASSWORD=your_password
 GEMINI_AI_KEY=
 GEMINI_MODEL_NAME=gemini-2.5-flash
 
+# OpenRouter (tuỳ chọn). Nếu set thì backend sẽ ưu tiên dùng trước Gemini.
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL_NAME=openai/gpt-oss-120b
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
@@ -87,7 +92,8 @@ CLOUDINARY_FOLDER=vibe_engineering
 ```
 
 Lưu ý:
-- Nếu `GEMINI_AI_KEY` trống, backend sẽ tự fallback qua heuristic khi tạo plan.
+- Nếu `OPENROUTER_API_KEY` trống/không set, backend sẽ dùng Gemini (nếu `GEMINI_AI_KEY` có).
+- Nếu cả OpenRouter và Gemini đều không cấu hình, backend sẽ tự fallback qua heuristic khi tạo plan.
 - Không nên commit secrets thật vào git.
 
 ---

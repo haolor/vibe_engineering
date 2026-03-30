@@ -25,17 +25,20 @@ public class NutritionService {
     private final ObjectMapper objectMapper;
     private final MealPlanHeuristicService heuristicService = new MealPlanHeuristicService();
     private final GeminiMealPlanService geminiMealPlanService;
+    private final OpenRouterMealPlanService openRouterMealPlanService;
 
     public NutritionService(
             NutritionProfileRepository profileRepository,
             DietPlanRepository dietPlanRepository,
             ObjectMapper objectMapper,
-            GeminiMealPlanService geminiMealPlanService
+            GeminiMealPlanService geminiMealPlanService,
+            OpenRouterMealPlanService openRouterMealPlanService
     ) {
         this.profileRepository = profileRepository;
         this.dietPlanRepository = dietPlanRepository;
         this.objectMapper = objectMapper;
         this.geminiMealPlanService = geminiMealPlanService;
+        this.openRouterMealPlanService = openRouterMealPlanService;
     }
 
     @Transactional
@@ -99,7 +102,29 @@ public class NutritionService {
         MealPlanDto mealPlan = null;
         String llmRawText = null;
 
-        if (geminiMealPlanService.isConfigured()) {
+        // Priority: OpenRouter -> Gemini -> Heuristic fallback.
+        if (openRouterMealPlanService.isConfigured()) {
+            try {
+                var result = openRouterMealPlanService.generateMealPlan(
+                        gender,
+                        age,
+                        heightCm,
+                        currentWeightKg,
+                        req.getTargetWeightKg(),
+                        goalTypeRaw,
+                        numberOfDays,
+                        start,
+                        caloriesPerDay
+                );
+                mealPlan = result.plan();
+                llmRawText = result.rawText();
+            } catch (Exception e) {
+                mealPlan = null;
+                llmRawText = null;
+            }
+        }
+
+        if (mealPlan == null && geminiMealPlanService.isConfigured()) {
             try {
                 var result = geminiMealPlanService.generateMealPlan(
                         gender,

@@ -28,9 +28,10 @@ Chạy (PowerShell, Windows):
 Backend đọc biến môi trường từ `backend/.env`:
 - DB: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 - Gemini (tuỳ chọn): `GEMINI_AI_KEY`, `GEMINI_MODEL_NAME`
+- OpenRouter (tuỳ chọn): `OPENROUTER_API_KEY`, `OPENROUTER_MODEL_NAME`, `OPENROUTER_BASE_URL`
 - Cloudinary (bắt buộc nếu dùng upload ảnh): `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER`
 
-Nếu `GEMINI_AI_KEY` rỗng/không set thì `/api/plan` sẽ fallback sang heuristic (không cần LLM).
+Nếu `OPENROUTER_API_KEY` rỗng/không set thì backend sẽ dùng Gemini (nếu `GEMINI_AI_KEY` có); nếu cả hai không cấu hình thì `/api/plan` fallback sang heuristic (không cần LLM).
 
 ## Map tài liệu
 ## Backend
