@@ -1,0 +1,15 @@
+com\vibe\finance\model\TransactionDocument.class
+com\vibe\finance\model\CounterDocument.class
+com\vibe\finance\model\CategoryDocument.class
+com\vibe\finance\repo\TransactionRepository.class
+com\vibe\finance\api\AIController.class
+com\vibe\finance\service\NotificationClient.class
+com\vibe\finance\config\WebClientConfig.class
+com\vibe\finance\api\ChatbotController.class
+com\vibe\finance\FinanceServiceApplication.class
+com\vibe\finance\repo\CategoryRepository.class
+com\vibe\finance\config\SequenceService.class
+com\vibe\finance\store\FinanceStore.class
+com\vibe\finance\api\FinanceController.class
+com\vibe\finance\service\AIService.class
+com\vibe\finance\api\GlobalExceptionHandler.class

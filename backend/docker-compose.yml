@@ -38,7 +38,7 @@ services:
     command: mvn -pl auth-service spring-boot:run
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
-      - MONGODB_URI=mongodb://mongo:27017/auth_db?replicaSet=rs0
+      - AUTH_MONGODB_URI=mongodb://mongo:27017/auth_db?replicaSet=rs0
     depends_on:
       - mongo-init
       - eureka-server
@@ -68,7 +68,7 @@ services:
     command: mvn -pl notification-service spring-boot:run
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
-      - MONGODB_URI=mongodb://mongo:27017/notification_db?replicaSet=rs0
+      - NOTIFICATION_MONGODB_URI=mongodb://mongo:27017/notification_db?replicaSet=rs0
     depends_on:
       - mongo-init
       - eureka-server

@@ -1,0 +1,7 @@
+com\vibe\auth\repo\UserRepository.class
+com\vibe\auth\api\AuthController.class
+com\vibe\auth\AuthServiceApplication.class
+com\vibe\auth\api\GlobalExceptionHandler.class
+com\vibe\auth\model\UserDocument.class
+com\vibe\auth\security\JwtTokenService.class
+com\vibe\auth\store\UserStore.class

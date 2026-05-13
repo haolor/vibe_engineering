@@ -16,12 +16,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 public class AIController {
     private final WebClient notificationWebClient;
     private final com.vibe.finance.store.FinanceStore financeStore;
-    private final com.vibe.finance.service.GeminiService aiService;
+    private final com.vibe.finance.service.AIService aiService;
 
     public AIController(
             @Qualifier("loadBalancedWebClientBuilder") org.springframework.web.reactive.function.client.WebClient.Builder loadBalancedWebClientBuilder,
             com.vibe.finance.store.FinanceStore financeStore,
-            com.vibe.finance.service.GeminiService aiService) {
+            com.vibe.finance.service.AIService aiService) {
         this.notificationWebClient = loadBalancedWebClientBuilder.baseUrl("http://notification-service/notifications").build();
         this.financeStore = financeStore;
         this.aiService = aiService;

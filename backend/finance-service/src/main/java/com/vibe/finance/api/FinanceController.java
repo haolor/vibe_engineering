@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import com.vibe.finance.service.GeminiService;
+import com.vibe.finance.service.AIService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,11 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping
 public class FinanceController {
     private final FinanceStore financeStore;
-    private final GeminiService geminiService;
+    private final AIService aiService;
 
-    public FinanceController(FinanceStore financeStore, GeminiService geminiService) {
+    public FinanceController(FinanceStore financeStore, AIService aiService) {
         this.financeStore = financeStore;
-        this.geminiService = geminiService;
+        this.aiService = aiService;
     }
 
     @GetMapping("/categories/")
@@ -129,13 +129,23 @@ public class FinanceController {
         }
         try {
             String text = payload.get("text");
-            // Lấy dữ liệu giao dịch gần đây để Gemini có ngữ cảnh
+            System.out.println("[FinanceNLP] Request from userId: " + userId + " - Text: " + text);
+            
+            // Save user message to history
+            financeStore.saveChatMessage(userId, "user", text);
+            
+            // Lấy dữ liệu giao dịch gần đây để ai có ngữ cảnh
             List<Map<String, Object>> stats = financeStore.recentExpenses(userId);
             String prompt = String.format(
                 "Dưới đây là dữ liệu chi tiêu gần đây của người dùng: %s\n\nNgười dùng hỏi: %s\n\nHãy trả lời ngắn gọn, thân thiện.",
                 stats.toString(), text
             );
-            String response = geminiService.generateResponse(prompt);
+            String response = aiService.generateResponse(prompt, true);
+            
+            // Save bot response to history
+            financeStore.saveChatMessage(userId, "bot", response);
+            System.out.println("[FinanceNLP] Saved interaction for userId: " + userId);
+            
             return ResponseEntity.ok(Map.of("result", response));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -173,7 +183,7 @@ public class FinanceController {
                 text, catsList.toString(), LocalDate.now().toString()
             );
             
-            String aiResponse = geminiService.generateResponse(prompt);
+            String aiResponse = aiService.generateResponse(prompt, true);
             System.out.println("AI Response raw: " + aiResponse);
             
             String jsonClean = aiResponse.replaceAll("(?s).*?(\\{.*\\}).*", "$1").trim();

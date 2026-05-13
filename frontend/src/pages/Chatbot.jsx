@@ -3,23 +3,49 @@ import api from '../services/api'
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline'
 
 function Chatbot() {
-  const [messages, setMessages] = useState([
+  const welcomeMessages = [
     {
       type: 'bot',
-      text: 'Xin chào! Tôi là chatbot AI (Gemini) hỗ trợ quản lý tài chính. Tôi có thể giúp bạn:',
+      text: 'Xin chào! Tôi là chatbot AI hỗ trợ quản lý tài chính. Tôi có thể giúp bạn:',
     },
     {
       type: 'bot',
       text: '• Hỏi về chi tiêu, thu nhập, số dư\n• Dự đoán chi tiêu\n• Phát hiện bất thường\n• Gợi ý tiết kiệm\n\nHãy thử hỏi: "Tôi đã chi bao nhiêu trong tháng này?"',
     },
-  ])
+  ]
+
+  const [messages, setMessages] = useState(welcomeMessages)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingHistory, setLoadingHistory] = useState(true)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setLoadingHistory(true)
+        const response = await api.get('/chatbot/history')
+        console.log('Fetched chat history:', response.data)
+        if (response.data && response.data.length > 0) {
+          const historyMessages = response.data.map(msg => ({
+            type: msg.type,
+            text: msg.text
+          }))
+          // Nếu đã có lịch sử, ta hiển thị lịch sử thay vì lời chào mặc định
+          setMessages(historyMessages)
+        }
+      } catch (error) {
+        console.error('Error fetching chat history:', error)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+    fetchHistory()
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
@@ -35,7 +61,7 @@ function Chatbot() {
     setLoading(true)
 
     try {
-      const response = await api.post('/chatbot/', { message: userMessage })
+      const response = await api.post('/chatbot', { message: userMessage })
       setMessages((prev) => [
         ...prev,
         { type: 'bot', text: response.data.response },
@@ -82,7 +108,7 @@ function Chatbot() {
       // Các câu hỏi về chi tiêu, thu nhập, số dư, dự đoán, bất thường, tiết kiệm -> dùng chatbot
       if (isSavingsQuery || isPredictionQuery || isAnomalyQuery || isBalanceQuery || isIncomeQuery) {
         // Dùng chatbot endpoint cho các câu hỏi này
-        const response = await api.post('/chatbot/', { message: query })
+        const response = await api.post('/chatbot', { message: query })
         setMessages((prev) => [
           ...prev,
           { type: 'bot', text: response.data.response },
@@ -125,6 +151,11 @@ function Chatbot() {
       <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+          {loadingHistory && (
+            <div className="flex justify-center italic text-gray-500">
+              <p>Đang tải lịch sử trò chuyện...</p>
+            </div>
+          )}
           {messages.map((message, index) => (
             <div
               key={index}

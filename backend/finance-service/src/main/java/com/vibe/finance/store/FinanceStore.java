@@ -3,9 +3,12 @@ package com.vibe.finance.store;
 import com.vibe.finance.config.SequenceService;
 import com.vibe.finance.model.CategoryDocument;
 import com.vibe.finance.model.TransactionDocument;
+import com.vibe.finance.model.ChatMessageDocument;
 import com.vibe.finance.repo.CategoryRepository;
 import com.vibe.finance.repo.TransactionRepository;
+import com.vibe.finance.repo.ChatMessageRepository;
 import com.vibe.finance.service.NotificationClient;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,16 +21,19 @@ public class FinanceStore {
     private static final int PAGE_SIZE = 20;
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final SequenceService sequenceService;
     private final NotificationClient notificationClient;
 
     public FinanceStore(
             CategoryRepository categoryRepository,
             TransactionRepository transactionRepository,
+            ChatMessageRepository chatMessageRepository,
             SequenceService sequenceService,
             NotificationClient notificationClient) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
+        this.chatMessageRepository = chatMessageRepository;
         this.sequenceService = sequenceService;
         this.notificationClient = notificationClient;
         seedCategoriesIfEmpty();
@@ -163,6 +169,26 @@ public class FinanceStore {
                 .limit(5)
                 .map(this::transactionMap)
                 .toList();
+    }
+
+    public List<Map<String, Object>> getChatHistory(String userId) {
+        return chatMessageRepository.findByUserIdOrderByTimestampAsc(userId).stream()
+                .map(msg -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("type", msg.getRole());
+                    map.put("text", msg.getContent());
+                    map.put("timestamp", msg.getTimestamp());
+                    return map;
+                }).toList();
+    }
+
+    public void saveChatMessage(String userId, String role, String content) {
+        ChatMessageDocument msg = new ChatMessageDocument();
+        msg.setUserId(userId);
+        msg.setRole(role);
+        msg.setContent(content);
+        msg.setTimestamp(LocalDateTime.now());
+        chatMessageRepository.save(msg);
     }
 
     private CategoryDocument findCategory(long id) {
