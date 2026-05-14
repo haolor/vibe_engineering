@@ -35,6 +35,15 @@ public class FinanceController {
         return financeStore.categories();
     }
 
+    @PostMapping("/categories/")
+    public ResponseEntity<?> createCategory(@RequestBody Map<String, Object> payload) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(financeStore.createCategory(payload));
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid category payload"));
+        }
+    }
+
     @GetMapping("/transactions/")
     public ResponseEntity<?> list(
             @RequestHeader(name = "X-User-Id", required = false) String userId,
@@ -60,7 +69,8 @@ public class FinanceController {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(financeStore.createTransaction(userId, payload));
         } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid transaction payload"));
+            ex.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid transaction payload: " + ex.getMessage()));
         }
     }
 
@@ -95,12 +105,13 @@ public class FinanceController {
             @RequestHeader(name = "X-User-Id", required = false) String userId,
             @RequestParam(name = "period", required = false) String period,
             @RequestParam(name = "start_date", required = false) String startDate,
-            @RequestParam(name = "end_date", required = false) String endDate) {
+            @RequestParam(name = "end_date", required = false) String endDate,
+            @RequestParam(name = "category_ids", required = false) List<Long> categoryIds) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
         }
         try {
-            return ResponseEntity.ok(financeStore.statistics(userId, period, startDate, endDate));
+            return ResponseEntity.ok(financeStore.statistics(userId, period, startDate, endDate, categoryIds));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Internal Server Error: " + ex.getMessage()));

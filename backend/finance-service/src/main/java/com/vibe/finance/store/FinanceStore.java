@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -39,12 +41,22 @@ public class FinanceStore {
         seedCategoriesIfEmpty();
     }
 
+    public Map<String, Object> createCategory(Map<String, Object> payload) {
+        CategoryDocument cat = new CategoryDocument();
+        cat.setId(sequenceService.next("category_id"));
+        cat.setName(String.valueOf(payload.get("name")));
+        cat.setType(String.valueOf(payload.getOrDefault("type", "expense")));
+        cat.setIcon(String.valueOf(payload.getOrDefault("icon", "📦")));
+        cat.setColor(String.valueOf(payload.getOrDefault("color", "#6b7280")));
+        return categoryMap(categoryRepository.save(cat));
+    }
+
     public List<Map<String, Object>> categories() {
         return categoryRepository.findAll().stream().map(this::categoryMap).toList();
     }
 
     public Map<String, Object> listTransactions(String userId, int page) {
-        List<Map<String, Object>> all = transactionRepository.findByUserIdOrderByTransactionDateDesc(userId)
+        List<Map<String, Object>> all = transactionRepository.findByUserIdOrderByTransactionDateDescIdDesc(userId)
                 .stream().map(this::transactionMap).toList();
         int total = all.size();
         int from = Math.max(0, (page - 1) * PAGE_SIZE);
@@ -97,12 +109,14 @@ public class FinanceStore {
         transactionRepository.findByUserIdAndId(userId, id).ifPresent(transactionRepository::delete);
     }
 
-    public Map<String, Object> statistics(String userId, String period, String startDate, String endDate) {
-        List<Map<String, Object>> all = transactionRepository.findByUserIdOrderByTransactionDateDesc(userId)
+    public Map<String, Object> statistics(String userId, String period, String startDate, String endDate, List<Long> categoryIds) {
+        List<Map<String, Object>> all = transactionRepository.findByUserIdOrderByTransactionDateDescIdDesc(userId)
                 .stream().map(this::transactionMap).toList();
         LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.MIN;
         LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.MAX;
-        if (period != null && !"all".equals(period)) {
+        
+        // Nếu không truyền ngày nhưng có period (đây là logic cũ, ta giữ lại nếu cần)
+        if (period != null && !"all".equals(period) && startDate == null) {
             start = LocalDate.now().minusMonths(1);
             end = LocalDate.now();
         }
@@ -116,6 +130,14 @@ public class FinanceStore {
             LocalDate date = LocalDate.parse(String.valueOf(tx.get("transaction_date")));
             if (date.isBefore(start) || date.isAfter(end)) {
                 continue;
+            }
+            
+            // Lọc theo danh mục nếu có
+            if (categoryIds != null && !categoryIds.isEmpty()) {
+                Long catId = ((Number) tx.get("category")).longValue();
+                if (!categoryIds.contains(catId)) {
+                    continue;
+                }
             }
             double amount = ((Number) tx.get("amount")).doubleValue();
             String type = String.valueOf(tx.get("category_type"));
@@ -159,12 +181,12 @@ public class FinanceStore {
     }
 
     public List<Map<String, Object>> getAllTransactions(String userId) {
-        return transactionRepository.findByUserIdOrderByTransactionDateDesc(userId)
+        return transactionRepository.findByUserIdOrderByTransactionDateDescIdDesc(userId)
                 .stream().map(this::transactionMap).toList();
     }
 
     public List<Map<String, Object>> recentExpenses(String userId) {
-        return transactionRepository.findByUserIdOrderByTransactionDateDesc(userId).stream()
+        return transactionRepository.findByUserIdOrderByTransactionDateDescIdDesc(userId).stream()
                 .filter(item -> "expense".equals(item.getCategoryType()))
                 .limit(5)
                 .map(this::transactionMap)
@@ -192,15 +214,24 @@ public class FinanceStore {
     }
 
     private CategoryDocument findCategory(long id) {
-        return categoryRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("category"));
+        return categoryRepository.findAll().stream()
+                .filter(c -> c.getId() != null && c.getId() == id)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("category not found: " + id));
     }
 
     private void seedCategoriesIfEmpty() {
-        if (!categoryRepository.existsById(1L)) categoryRepository.save(category(1L, "Luong", "income", "💼", "#22c55e"));
-        if (!categoryRepository.existsById(2L)) categoryRepository.save(category(2L, "An uong", "expense", "🍜", "#ef4444"));
-        if (!categoryRepository.existsById(3L)) categoryRepository.save(category(3L, "Di chuyen", "expense", "🚗", "#f97316"));
-        if (!categoryRepository.existsById(4L)) categoryRepository.save(category(4L, "Thuong", "income", "🎁", "#10b981"));
-        if (!categoryRepository.existsById(5L)) categoryRepository.save(category(5L, "Khac", "expense", "📦", "#6b7280"));
+        Set<Long> existingIds = categoryRepository.findAll().stream()
+                .map(CategoryDocument::getId)
+                .filter(i -> i != null)
+                .collect(Collectors.toSet());
+        if (!existingIds.contains(1L)) categoryRepository.save(category(1L, "Luong", "income", "💼", "#22c55e"));
+        if (!existingIds.contains(2L)) categoryRepository.save(category(2L, "An uong", "expense", "🍜", "#ef4444"));
+        if (!existingIds.contains(3L)) categoryRepository.save(category(3L, "Di chuyen", "expense", "🚗", "#f97316"));
+        if (!existingIds.contains(4L)) categoryRepository.save(category(4L, "Thuong", "income", "🎁", "#10b981"));
+        if (!existingIds.contains(5L)) categoryRepository.save(category(5L, "Khac", "expense", "📦", "#6b7280"));
+        // Ensure the counter starts AFTER the seeded IDs so new categories never collide
+        sequenceService.ensureMinimum("category_id", 11L);
     }
 
     private CategoryDocument category(long id, String name, String type, String icon, String color) {

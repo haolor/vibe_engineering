@@ -30,6 +30,13 @@ function Transactions() {
     currentPage: 1,
     totalPages: 1,
   })
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    type: 'expense',
+    icon: '📦',
+    color: '#6b7280',
+  })
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
@@ -56,7 +63,7 @@ function Transactions() {
     try {
       const transactionsRes = await api.get(`/transactions/?page=${page}`)
       const data = transactionsRes.data
-      
+
       // Handle paginated response
       if (data.results) {
         setTransactions(data.results)
@@ -104,18 +111,18 @@ function Transactions() {
         recognition.lang = 'vi-VN'
         recognition.continuous = false
         recognition.interimResults = false
-        
+
         recognition.onstart = () => {
           setIsListening(true)
           setNlpError('')
         }
-        
+
         recognition.onresult = (event) => {
           const transcript = event.results[0][0].transcript
           setNlpInput(prev => prev + (prev ? ' ' : '') + transcript)
           setIsListening(false)
         }
-        
+
         recognition.onerror = (event) => {
           console.error('Speech recognition error:', event.error)
           setIsListening(false)
@@ -127,15 +134,15 @@ function Transactions() {
             setNlpError('Lỗi nhận diện giọng nói. Vui lòng thử lại.')
           }
         }
-        
+
         recognition.onend = () => {
           setIsListening(false)
         }
-        
+
         recognitionRef.current = recognition
       }
     }
-    
+
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop()
@@ -171,10 +178,10 @@ function Transactions() {
       setNlpError('Vui lòng nhập hoặc nói câu mô tả giao dịch.')
       return
     }
-    
+
     setNlpLoading(true)
     setNlpError('')
-    
+
     try {
       const response = await api.post('/transactions/nlp_input/', { text: nlpInput })
       setNlpInput('')
@@ -185,9 +192,9 @@ function Transactions() {
       alert('Đã thêm giao dịch thành công!')
     } catch (error) {
       console.error('NLP error:', error)
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.detail ||
-                          'Không thể xử lý câu nhập liệu. Vui lòng kiểm tra lại định dạng.\n\nVí dụ: "Hôm nay chi 50k ăn sáng", "Chi 100000 mua quần áo"'
+      const errorMessage = error.response?.data?.error ||
+        error.response?.data?.detail ||
+        'Không thể xử lý câu nhập liệu. Vui lòng kiểm tra lại định dạng.\n\nVí dụ: "Hôm nay chi 50k ăn sáng", "Chi 100000 mua quần áo"'
       setNlpError(errorMessage)
     } finally {
       setNlpLoading(false)
@@ -213,6 +220,25 @@ function Transactions() {
       fetchData(pagination.currentPage) // Reload current page
     } catch (error) {
       alert('Có lỗi xảy ra. Vui lòng thử lại.')
+    }
+  }
+
+  const handleCategorySubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const response = await api.post('/categories/', categoryFormData)
+      setCategories([...categories, response.data])
+      setShowCategoryModal(false)
+      setCategoryFormData({
+        name: '',
+        type: 'expense',
+        icon: '📦',
+        color: '#6b7280',
+      })
+      // Auto select the new category
+      setFormData({ ...formData, category: response.data.id })
+    } catch (error) {
+      alert('Không thể thêm danh mục mới.')
     }
   }
 
@@ -251,17 +277,17 @@ function Transactions() {
         setOcrError('Vui lòng chọn file ảnh (JPG, PNG, WebP)')
         return
       }
-      
+
       // Kiểm tra kích thước (10MB)
       if (file.size > 10 * 1024 * 1024) {
         setOcrError('Kích thước ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 10MB')
         return
       }
-      
+
       setSelectedImage(file)
       setOcrError('')
       setOcrResult(null)
-      
+
       // Tạo preview
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -276,17 +302,17 @@ function Transactions() {
       setOcrError('Vui lòng chọn ảnh hóa đơn')
       return
     }
-    
+
     setOcrLoading(true)
     setOcrError('')
     setOcrResult(null)
-    
+
     try {
       const formData = new FormData()
       formData.append('image', selectedImage)
-      
+
       const response = await api.post('/transactions/ocr_receipt/', formData)
-      
+
       setOcrResult(response.data)
       // Tự động đóng modal và reload data
       setTimeout(() => {
@@ -297,12 +323,12 @@ function Transactions() {
         fetchData(1)
         alert('Đã thêm giao dịch từ hóa đơn thành công!')
       }, 2000)
-      
+
     } catch (error) {
       console.error('OCR error:', error)
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.detail ||
-                          'Không thể xử lý ảnh. Vui lòng thử lại với ảnh rõ hơn.'
+      const errorMessage = error.response?.data?.error ||
+        error.response?.data?.detail ||
+        'Không thể xử lý ảnh. Vui lòng thử lại với ảnh rõ hơn.'
       setOcrError(errorMessage)
       if (error.response?.data?.raw_text) {
         setOcrResult({ raw_text: error.response.data.raw_text })
@@ -378,13 +404,13 @@ function Transactions() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Ví dụ: "Hôm nay chi 50k ăn sáng", "Chi 100000 mua quần áo", "Nhận lương 10 triệu"
             </p>
-            
+
             {nlpError && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
                 {nlpError}
               </div>
             )}
-            
+
             <form onSubmit={handleNlpSubmit}>
               <div className="relative mb-4">
                 <textarea
@@ -400,24 +426,23 @@ function Transactions() {
                 <button
                   type="button"
                   onClick={isListening ? stopListening : startListening}
-                  className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${
-                    isListening 
-                      ? 'bg-red-500 text-white animate-pulse' 
+                  className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${isListening
+                      ? 'bg-red-500 text-white animate-pulse'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                    }`}
                   title={isListening ? 'Dừng ghi âm' : 'Bắt đầu ghi âm'}
                 >
                   <MicrophoneIcon className="w-5 h-5" />
                 </button>
               </div>
-              
+
               {isListening && (
                 <div className="mb-4 text-sm text-purple-600 flex items-center">
                   <div className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></div>
                   Đang nghe... Hãy nói câu mô tả giao dịch của bạn
                 </div>
               )}
-              
+
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"
@@ -453,13 +478,13 @@ function Transactions() {
             <p className="text-sm text-gray-600 mb-4">
               Upload ảnh hóa đơn để tự động trích xuất thông tin giao dịch
             </p>
-            
+
             {ocrError && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
                 {ocrError}
               </div>
             )}
-            
+
             {ocrResult && ocrResult.transaction && (
               <div className="mb-4 p-4 bg-green-50 border border-green-400 rounded">
                 <p className="text-green-800 font-medium mb-2">✅ Đã trích xuất thành công!</p>
@@ -506,19 +531,19 @@ function Transactions() {
                 </div>
               </div>
             )}
-            
+
             <div className="space-y-4">
               {/* Image Preview */}
               {imagePreview && (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
                     className="max-w-full h-auto max-h-64 mx-auto rounded"
                   />
                 </div>
               )}
-              
+
               {/* File Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -535,7 +560,7 @@ function Transactions() {
                   Hỗ trợ: JPG, PNG, WebP (tối đa 10MB)
                 </p>
               </div>
-              
+
               {/* OCR Text Preview */}
               {ocrResult && ocrResult.raw_text && (
                 <div className="mt-4">
@@ -545,7 +570,7 @@ function Transactions() {
                   </div>
                 </div>
               )}
-              
+
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"
@@ -593,19 +618,29 @@ function Transactions() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Danh mục *
                 </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Chọn danh mục</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    required
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Chọn danh mục</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryModal(true)}
+                    className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                    title="Thêm danh mục mới"
+                  >
+                    <PlusIcon className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -653,6 +688,83 @@ function Transactions() {
         </div>
       )}
 
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Thêm danh mục mới</h2>
+            <form onSubmit={handleCategorySubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên danh mục *
+                </label>
+                <input
+                  type="text"
+                  value={categoryFormData.name}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                  required
+                  placeholder="Ví dụ: Ăn uống, Giải trí..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Loại *
+                </label>
+                <select
+                  value={categoryFormData.type}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, type: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="expense">Chi phí</option>
+                  <option value="income">Thu nhập</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Icon
+                  </label>
+                  <input
+                    type="text"
+                    value={categoryFormData.icon}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
+                    placeholder="Emoji (ví dụ: 🍔)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Màu sắc
+                  </label>
+                  <input
+                    type="color"
+                    value={categoryFormData.color}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
+                    className="w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Lưu
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Transactions List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         {/* Mobile Card View */}
@@ -677,9 +789,8 @@ function Transactions() {
                         </p>
                       </div>
                     </div>
-                    <p className={`text-sm font-bold ml-2 flex-shrink-0 ${
-                      transaction.category_type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}>
+                    <p className={`text-sm font-bold ml-2 flex-shrink-0 ${transaction.category_type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      }`}>
                       {transaction.category_type === 'income' ? '+' : '-'}
                       {parseFloat(transaction.amount).toLocaleString('vi-VN')} ₫
                     </p>
@@ -755,9 +866,8 @@ function Transactions() {
                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                       {transaction.description || '-'}
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
-                      transaction.category_type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${transaction.category_type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      }`}>
                       {transaction.category_type === 'income' ? '+' : '-'}
                       {parseFloat(transaction.amount).toLocaleString('vi-VN')} ₫
                     </td>
@@ -783,7 +893,7 @@ function Transactions() {
             </tbody>
           </table>
         </div>
-        
+
         {/* Pagination */}
         {pagination.count > 0 && pagination.totalPages > 1 && (
           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
@@ -827,7 +937,7 @@ function Transactions() {
                   >
                     <ChevronLeftIcon className="h-5 w-5" />
                   </button>
-                  
+
                   {/* Page numbers */}
                   {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                     let pageNum
@@ -840,22 +950,21 @@ function Transactions() {
                     } else {
                       pageNum = pagination.currentPage - 2 + i
                     }
-                    
+
                     return (
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          pageNum === pagination.currentPage
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pageNum === pagination.currentPage
                             ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
                             : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         {pageNum}
                       </button>
                     )
                   })}
-                  
+
                   <button
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
                     disabled={!pagination.next}

@@ -23,12 +23,34 @@ function Statistics() {
   const isDark = document.documentElement.classList.contains('dark')
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [startDate, setStartDate] = useState(
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  )
-  const [endDate, setEndDate] = useState(
-    new Date().toISOString().split('T')[0]
-  )
+
+  // Tính toán startDate dựa trên preferences.default_report_period
+  const getInitialStartDate = () => {
+    const now = new Date()
+    const period = preferences?.default_report_period || 'month'
+    
+    if (period === 'week') {
+      now.setDate(now.getDate() - 7)
+    } else if (period === 'quarter') {
+      now.setMonth(now.getMonth() - 3)
+    } else if (period === 'year') {
+      now.setFullYear(now.getFullYear() - 1)
+    } else {
+      // Mặc định là tháng
+      now.setMonth(now.getMonth() - 1)
+    }
+    return now.toISOString().split('T')[0]
+  }
+
+  const [startDate, setStartDate] = useState(getInitialStartDate())
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0])
+
+  // Cập nhật startDate khi preferences thay đổi (lần đầu load)
+  useEffect(() => {
+    if (preferences?.default_report_period) {
+      setStartDate(getInitialStartDate())
+    }
+  }, [preferences])
 
   useEffect(() => {
     fetchStatistics()
@@ -36,9 +58,15 @@ function Statistics() {
 
   const fetchStatistics = async () => {
     try {
-      const response = await api.get(
-        `/transactions/statistics/?start_date=${startDate}&end_date=${endDate}`
-      )
+      let url = `/transactions/statistics/?start_date=${startDate}&end_date=${endDate}`
+      
+      // Thêm tham số lọc danh mục nếu có cấu hình trong preferences
+      if (preferences?.report_categories && preferences.report_categories.length > 0) {
+        const catIds = preferences.report_categories.join(',')
+        url += `&category_ids=${catIds}`
+      }
+
+      const response = await api.get(url)
       setStats(response.data)
     } catch (error) {
       console.error('Error fetching statistics:', error)

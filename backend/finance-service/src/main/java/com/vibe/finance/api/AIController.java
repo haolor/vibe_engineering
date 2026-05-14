@@ -86,7 +86,7 @@ public class AIController {
             Map<String, Object> result = new com.fasterxml.jackson.databind.ObjectMapper().readValue(jsonPart, Map.class);
             
             // Lấy dữ liệu thống kê để vẽ biểu đồ
-            Map<String, Object> stats = financeStore.statistics(userId, "all", null, null);
+            Map<String, Object> stats = financeStore.statistics(userId, "all", null, null, null);
             result.put("weekly_data", stats.get("by_date")); 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -141,7 +141,7 @@ public class AIController {
             Map<String, Object> result = new com.fasterxml.jackson.databind.ObjectMapper().readValue(jsonPart, Map.class);
             
             // Tính toán thêm dữ liệu chi tiêu tháng này cho UI
-            Map<String, Object> stats = financeStore.statistics(userId, "all", null, null);
+            Map<String, Object> stats = financeStore.statistics(userId, "all", null, null, null);
             Map<String, Object> summary = (Map<String, Object>) stats.get("summary");
             result.put("monthly_expense", summary.get("total_expense"));
             

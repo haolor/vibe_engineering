@@ -90,14 +90,14 @@ function Settings() {
       // Đảm bảo report_categories và dashboard_widgets là array
       const dataToSave = {
         ...formData,
-        report_categories: Array.isArray(formData.report_categories) 
-          ? formData.report_categories 
+        report_categories: Array.isArray(formData.report_categories)
+          ? formData.report_categories
           : [],
-        dashboard_widgets: Array.isArray(formData.dashboard_widgets) 
-          ? formData.dashboard_widgets 
+        dashboard_widgets: Array.isArray(formData.dashboard_widgets)
+          ? formData.dashboard_widgets
           : [],
       }
-      
+
       await updatePreferences(dataToSave)
       setSaveMessage('Đã lưu cài đặt thành công!')
       setTimeout(() => setSaveMessage(''), 3000)
@@ -137,11 +137,10 @@ function Settings() {
       <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 md:mb-8">Cài đặt</h1>
 
       {saveMessage && (
-        <div className={`mb-4 p-4 rounded-lg ${
-          saveMessage.includes('thành công') 
-            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' 
+        <div className={`mb-4 p-4 rounded-lg ${saveMessage.includes('thành công')
+            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300'
             : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-        }`}>
+          }`}>
           {saveMessage}
         </div>
       )}
@@ -180,11 +179,10 @@ function Settings() {
                     key={color.value}
                     type="button"
                     onClick={() => handleChange('primary_color', color.value)}
-                    className={`h-10 rounded-lg border-2 transition-all ${
-                      formData.primary_color === color.value
+                    className={`h-10 rounded-lg border-2 transition-all ${formData.primary_color === color.value
                         ? 'border-gray-900 dark:border-gray-100 scale-110'
                         : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-                    }`}
+                      }`}
                     style={{ backgroundColor: color.value }}
                     title={color.name}
                   />
