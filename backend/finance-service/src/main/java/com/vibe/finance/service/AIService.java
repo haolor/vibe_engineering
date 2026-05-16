@@ -109,7 +109,58 @@ public class AIService {
             }
             return "Xin lỗi, tôi không thể trả lời lúc này.";
         } catch (Exception e) {
-            return "Lỗi khi kết nối với AI (Groq): " + e.getMessage();
+            throw new RuntimeException("Lỗi khi kết nối với AI (Groq): " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Generate response with vision support (Llama 3.2 Vision)
+     * @param prompt The user prompt
+     * @param base64Image The image in base64 format (with data:image/... prefix)
+     */
+    public String generateVisionResponse(String prompt, String base64Image) {
+        String url = "https://api.groq.com/openai/v1/chat/completions";
+        String selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+        
+        List<Map<String, Object>> content = new java.util.ArrayList<>();
+        content.add(Map.of("type", "text", "text", prompt));
+        content.add(Map.of("type", "image_url", "image_url", Map.of("url", base64Image)));
+        
+        Map<String, Object> message = Map.of("role", "user", "content", content);
+        
+        Map<String, Object> body = Map.of(
+            "model", selectedModel,
+            "messages", List.of(message),
+            "max_tokens", 2000,
+            "response_format", Map.of("type", "json_object")
+        );
+
+        try {
+            Map<String, Object> response = webClient.post()
+                .uri(url)
+                .header("Authorization", "Bearer " + apiKey)
+                .bodyValue(body)
+                .retrieve()
+                .onStatus(status -> status.isError(), clientResponse -> 
+                    clientResponse.bodyToMono(String.class).flatMap(errorBody -> {
+                        System.err.println("Groq Vision API Error Body: " + errorBody);
+                        return Mono.error(new RuntimeException("API Error: " + errorBody));
+                    })
+                )
+                .bodyToMono(Map.class)
+                .block();
+
+            if (response != null && response.containsKey("choices")) {
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+                if (!choices.isEmpty()) {
+                    Map<String, Object> choice = choices.get(0);
+                    Map<String, Object> resMsg = (Map<String, Object>) choice.get("message");
+                    return (String) resMsg.get("content");
+                }
+            }
+            return "Xin lỗi, tôi không thể phân tích ảnh lúc này.";
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi kết nối với AI Vision (Groq): " + e.getMessage(), e);
         }
     }
 }

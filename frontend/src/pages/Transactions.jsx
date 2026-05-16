@@ -3,6 +3,12 @@ import api from '../services/api'
 import { format } from 'date-fns'
 import { PlusIcon, PencilIcon, TrashIcon, MicrophoneIcon, ChevronLeftIcon, ChevronRightIcon, PhotoIcon } from '@heroicons/react/24/outline'
 
+const COMMON_ICONS = [
+  '🍔', '🍜', '☕', '🍺', '🏠', '⚡', '💧', '🚗', '⛽', '🚌', 
+  '🛍️', '👕', '👟', '🎬', '🎮', '🎤', '💊', '🏥', '🏃', '💰', 
+  '💵', '📈', '🎁', '📚', '🛠️', '📱', '✈️', '🐶', '🎓', '❤️'
+]
+
 function Transactions() {
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
@@ -400,10 +406,23 @@ function Transactions() {
       {showNlpModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Nhập liệu bằng ngôn ngữ tự nhiên</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Ví dụ: "Hôm nay chi 50k ăn sáng", "Chi 100000 mua quần áo", "Nhận lương 10 triệu"
+            <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100 flex items-center">
+              <MicrophoneIcon className="w-6 h-6 mr-2 text-purple-600" />
+              Trợ lý Giao dịch AI
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Bạn có thể nhập hoặc nói tự nhiên. Hệ thống sẽ tự động tính toán và phân loại.
             </p>
+            
+            <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg mb-6 border border-purple-100 dark:border-purple-800">
+              <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase mb-2">Ví dụ có thể thử:</p>
+              <ul className="text-xs text-purple-600 dark:text-purple-400 space-y-1 list-disc pl-4">
+                <li>"Hôm nay chi 50k ăn sáng"</li>
+                <li>"Mới được cho 100k và đã ăn hết 45k"</li>
+                <li>"Chi 500 nghìn đồng mua quần áo"</li>
+                <li>"Nhận lương 10 triệu hôm qua"</li>
+              </ul>
+            </div>
 
             {nlpError && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
@@ -426,20 +445,24 @@ function Transactions() {
                 <button
                   type="button"
                   onClick={isListening ? stopListening : startListening}
-                  className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${isListening
-                      ? 'bg-red-500 text-white animate-pulse'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  className={`absolute right-3 bottom-3 p-3 rounded-full shadow-lg transition-all transform hover:scale-110 ${isListening
+                      ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200 dark:ring-red-900/30'
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
                     }`}
                   title={isListening ? 'Dừng ghi âm' : 'Bắt đầu ghi âm'}
                 >
-                  <MicrophoneIcon className="w-5 h-5" />
+                  <MicrophoneIcon className="w-6 h-6" />
                 </button>
               </div>
 
               {isListening && (
-                <div className="mb-4 text-sm text-purple-600 flex items-center">
-                  <div className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></div>
-                  Đang nghe... Hãy nói câu mô tả giao dịch của bạn
+                <div className="mb-6 py-2 px-4 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center animate-bounce">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                  <span className="ml-3 text-sm font-medium text-red-600 dark:text-red-400">Hệ thống đang nghe...</span>
                 </div>
               )}
 
@@ -474,9 +497,14 @@ function Transactions() {
       {showOcrModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Quét hóa đơn từ ảnh</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Upload ảnh hóa đơn để tự động trích xuất thông tin giao dịch
+            <div className="flex items-center mb-4">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mr-3">
+                <PhotoIcon className="w-6 h-6 text-green-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Quét hóa đơn AI</h2>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Tải lên ảnh hóa đơn của bạn. Trợ lý AI sẽ tự động đọc số tiền, cửa hàng và phân loại danh mục.
             </p>
 
             {ocrError && (
@@ -583,9 +611,17 @@ function Transactions() {
                 <button
                   onClick={handleOcrSubmit}
                   disabled={ocrLoading || !selectedImage}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-200 dark:shadow-none transition-all transform hover:scale-105"
                 >
-                  {ocrLoading ? 'Đang xử lý...' : 'Quét và thêm giao dịch'}
+                  {ocrLoading ? (
+                    <div className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2001/XMLSchema-instance" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang phân tích...
+                    </div>
+                  ) : 'Quét và thêm giao dịch'}
                 </button>
               </div>
             </div>
@@ -729,20 +765,21 @@ function Transactions() {
                     type="text"
                     value={categoryFormData.icon}
                     onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
-                    placeholder="Emoji (ví dụ: 🍔)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    placeholder="Emoji..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-2"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Màu sắc
-                  </label>
-                  <input
-                    type="color"
-                    value={categoryFormData.color}
-                    onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
-                    className="w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
-                  />
+                  <div className="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200">
+                    {COMMON_ICONS.map(emoji => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setCategoryFormData({ ...categoryFormData, icon: emoji })}
+                        className={`text-xl p-1 hover:bg-white dark:hover:bg-gray-700 rounded transition-all ${categoryFormData.icon === emoji ? 'bg-white dark:bg-gray-700 ring-2 ring-blue-500' : ''}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end space-x-4 mt-6">

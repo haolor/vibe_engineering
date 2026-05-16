@@ -2,6 +2,7 @@ package com.vibe.finance.api;
 
 import com.vibe.finance.store.FinanceStore;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping
@@ -175,94 +177,171 @@ public class FinanceController {
             String text = payload.get("text");
             List<Map<String, Object>> categories = financeStore.categories();
             
-            // Đơn giản hóa danh sách danh mục để AI dễ đọc
             StringBuilder catsList = new StringBuilder();
             for (Map<String, Object> c : categories) {
                 catsList.append(String.format("- ID: %s, Tên: %s, Loại: %s\n", c.get("id"), c.get("name"), c.get("type")));
             }
             
             String prompt = String.format(
-                "Bạn là một trợ lý quản lý tài chính. Hãy phân tích câu sau để trích xuất thông tin giao dịch: \"%s\"\n\n" +
-                "Danh sách danh mục (CHỈ ĐƯỢC CHỌN TỪ ĐÂY):\n%s\n\n" +
-                "Yêu cầu:\n" +
-                "1. Trả về DUY NHẤT một chuỗi JSON.\n" +
-                "2. 'amount': Số tiền (phải là số nguyên, ví dụ: '210k' -> 210000, '1 triệu' -> 1000000). KHÔNG dùng dấu chấm hay phẩy.\n" +
-                "3. 'description': Mô tả ngắn gọn giao dịch.\n" +
-                "4. 'category_id': ID của danh mục phù hợp nhất từ danh sách trên.\n" +
-                "5. 'transaction_date': Định dạng yyyy-MM-dd (Ngày hôm nay là %s).\n\n" +
-                "Cấu trúc JSON: {\"amount\": number, \"description\": \"string\", \"category_id\": number, \"transaction_date\": \"string\"}",
-                text, catsList.toString(), LocalDate.now().toString()
+                "Bạn là một máy trích xuất dữ liệu tài chính. NHIỆM VỤ: Phân tích câu mô tả và trả về danh sách các giao dịch dưới dạng JSON ARRAY.\n" +
+                "Nếu câu chứa nhiều sự kiện (ví dụ: nhận tiền rồi tiêu tiền), hãy tách chúng thành các giao dịch riêng biệt.\n" +
+                "KHÔNG giải thích, KHÔNG nói gì thêm.\n\n" +
+                "ĐẦU VÀO:\n" +
+                "- Câu: \"%s\"\n" +
+                "- Ngày hôm nay: %s\n" +
+                "- Danh mục (ID|Tên|Loại):\n%s\n\n" +
+                "QUY TẮC:\n" +
+                "1. 'amount': Số nguyên dương.\n" +
+                "2. 'category_id': ID danh mục phù hợp. Lưu ý: Thu nhập (income) vs Chi phí (expense).\n" +
+                "3. 'description': Mô tả ngắn gọn.\n" +
+                "4. 'transaction_date': yyyy-MM-dd.\n\n" +
+                "VÍ DỤ:\n" +
+                "Câu: \"Mẹ cho 100k, ăn sáng 45k\"\n" +
+                "JSON: [\n" +
+                "  {\"amount\": 100000, \"description\": \"Mẹ cho\", \"category_id\": 4, \"transaction_date\": \"%s\"},\n" +
+                "  {\"amount\": 45000, \"description\": \"Ăn sáng\", \"category_id\": 2, \"transaction_date\": \"%s\"}\n" +
+                "]\n\n" +
+                "TRẢ VỀ JSON ARRAY:",
+                text, LocalDate.now().toString(), catsList.toString(), LocalDate.now().toString(), LocalDate.now().toString()
             );
             
-            String aiResponse = aiService.generateResponse(prompt, true);
-            System.out.println("AI Response raw: " + aiResponse);
-            
-            String jsonClean = aiResponse.replaceAll("(?s).*?(\\{.*\\}).*", "$1").trim();
-            if (!jsonClean.startsWith("{")) {
-                throw new RuntimeException("AI did not return valid JSON: " + aiResponse);
-            }
+            String aiResponse = aiService.generateResponse(prompt, false);
+            String jsonClean = aiResponse.replaceAll("(?s).*?(\\[.*?\\]|\\{.*?\\}).*", "$1").trim();
             
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            Map<String, Object> txData = mapper.readValue(jsonClean, Map.class);
-            System.out.println("Parsed TX Data: " + txData);
-            
-            // Xử lý số tiền (Amount)
-            Object amountObj = txData.get("amount");
-            if (amountObj == null) amountObj = txData.get("Amount");
-            
-            double amount = 0;
-            if (amountObj != null) {
-                String amtStrRaw = String.valueOf(amountObj).toLowerCase();
-                String amtStrDigits = amtStrRaw.replaceAll("[^0-9]", "");
-                if (!amtStrDigits.isEmpty()) {
-                    amount = Double.parseDouble(amtStrDigits);
-                    // Nếu chuỗi chứa 'k' và số đang nhỏ (như 210), nhân 1000
-                    if (amtStrRaw.contains("k") && amount < 10000) {
-                        amount *= 1000;
-                    } else if ((amtStrRaw.contains("tr") || amtStrRaw.contains("triệu")) && amount < 1000) {
-                        amount *= 1000000;
-                    }
-                }
+            List<Map<String, Object>> txDataList = new ArrayList<>();
+            Object parsed = mapper.readValue(jsonClean, Object.class);
+            if (parsed instanceof List) {
+                txDataList = (List<Map<String, Object>>) parsed;
+            } else if (parsed instanceof Map) {
+                txDataList.add((Map<String, Object>) parsed);
+            }
+
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (Map<String, Object> txData : txDataList) {
+                double amount = parseAmount(txData);
+                Object categoryId = resolveCategory(txData, text, categories);
+                
+                Map<String, Object> createPayload = new HashMap<>();
+                createPayload.put("amount", amount);
+                createPayload.put("description", txData.getOrDefault("description", text));
+                createPayload.put("category", categoryId);
+                createPayload.put("transaction_date", txData.getOrDefault("transaction_date", LocalDate.now().toString()));
+                
+                results.add(financeStore.createTransaction(userId, createPayload));
             }
             
-            // Xử lý danh mục (Category)
-            Object categoryId = txData.get("category_id");
-            if (categoryId == null || String.valueOf(categoryId).equals("null") || String.valueOf(categoryId).equals("1")) {
-                // Nếu AI trả về ID 1 (Lương) nhưng câu nói là 'chi' hoặc 'mua' -> cần sửa lại
-                String textLower = text.toLowerCase();
-                boolean isExpense = textLower.contains("chi") || textLower.contains("hết") || textLower.contains("mua") || textLower.contains("mất");
-                
-                if (isExpense) {
-                    if (textLower.contains("ăn") || textLower.contains("uống") || textLower.contains("sáng")) {
-                        categoryId = categories.stream().filter(c -> String.valueOf(c.get("name")).toLowerCase().contains("an uong")).map(c -> c.get("id")).findFirst().orElse(null);
-                    } else if (textLower.contains("xe") || textLower.contains("xăng") || textLower.contains("di chuyển")) {
-                        categoryId = categories.stream().filter(c -> String.valueOf(c.get("name")).toLowerCase().contains("di chuyen")).map(c -> c.get("id")).findFirst().orElse(null);
-                    }
-                }
-                
-                // Nếu vẫn chưa tìm thấy hoặc bị nhầm sang Lương khi đang là chi tiêu
-                if (categoryId == null || (isExpense && String.valueOf(categoryId).equals("1"))) {
-                    categoryId = categories.stream()
-                        .filter(c -> "Khac".equals(c.get("name")))
-                        .map(c -> c.get("id"))
-                        .findFirst()
-                        .orElse(5L);
-                }
-            }
-            
-            Map<String, Object> createPayload = new HashMap<>();
-            createPayload.put("amount", amount);
-            createPayload.put("description", txData.getOrDefault("description", text));
-            createPayload.put("category", categoryId);
-            createPayload.put("transaction_date", txData.getOrDefault("transaction_date", LocalDate.now().toString()));
-            
-            System.out.println("Final Create Payload: " + createPayload);
-            
-            return ResponseEntity.status(HttpStatus.CREATED).body(financeStore.createTransaction(userId, createPayload));
+            return ResponseEntity.status(HttpStatus.CREATED).body(results);
         } catch (Exception ex) {
             ex.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "AI Analysis Error: " + ex.getMessage()));
         }
+    }
+
+    @PostMapping("/transactions/ocr_receipt/")
+    public ResponseEntity<?> ocrReceipt(
+            @RequestHeader(name = "X-User-Id", required = false) String userId,
+            @RequestParam("image") MultipartFile image) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            byte[] bytes = image.getBytes();
+            String base64 = "data:" + image.getContentType() + ";base64," + java.util.Base64.getEncoder().encodeToString(bytes);
+            
+            List<Map<String, Object>> categories = financeStore.categories();
+            StringBuilder catsList = new StringBuilder();
+            for (Map<String, Object> c : categories) {
+                catsList.append(String.format("- ID: %s, Tên: %s, Loại: %s\n", c.get("id"), c.get("name"), c.get("type")));
+            }
+
+            String prompt = "Phân tích ảnh hóa đơn này và trích xuất thông tin giao dịch.\n" +
+                "Trả về DUY NHẤT JSON theo cấu trúc sau:\n" +
+                "{\n" +
+                "  \"amount\": number,\n" +
+                "  \"description\": \"string\",\n" +
+                "  \"category_id\": number,\n" +
+                "  \"transaction_date\": \"yyyy-MM-dd\",\n" +
+                "  \"merchant_name\": \"string\"\n" +
+                "}\n\n" +
+                "Danh sách danh mục:\n" + catsList.toString();
+
+            String aiResponse = aiService.generateVisionResponse(prompt, base64);
+            System.out.println("[OCR] AI Raw Response: " + aiResponse);
+            
+            String jsonClean = aiResponse.replaceAll("(?s).*?(\\{.*\\}).*", "$1").trim();
+            if (!jsonClean.startsWith("{")) {
+                throw new RuntimeException("AI did not return valid JSON for OCR: " + aiResponse);
+            }
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<String, Object> data = mapper.readValue(jsonClean, Map.class);
+            
+            double amount = parseAmount(data);
+            Object categoryId = resolveCategory(data, "", categories);
+            
+            Map<String, Object> createPayload = new HashMap<>();
+            createPayload.put("amount", amount);
+            createPayload.put("description", data.getOrDefault("description", data.getOrDefault("merchant_name", "Giao dịch từ hóa đơn")));
+            createPayload.put("category", categoryId);
+            createPayload.put("transaction_date", data.getOrDefault("transaction_date", LocalDate.now().toString()));
+            
+            Map<String, Object> result = financeStore.createTransaction(userId, createPayload);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("transaction", result);
+            response.put("extracted_info", data);
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "OCR Analysis Error: " + ex.getMessage()));
+        }
+    }
+
+    private double parseAmount(Map<String, Object> txData) {
+        Object amountObj = txData.get("amount");
+        if (amountObj == null) amountObj = txData.get("Amount");
+        
+        if (amountObj instanceof Number) {
+            return ((Number) amountObj).doubleValue();
+        } else if (amountObj != null) {
+            String amtStrRaw = String.valueOf(amountObj).toLowerCase().trim();
+            String cleanAmt = amtStrRaw.replaceAll("[^0-9.]", "");
+            if (!cleanAmt.isEmpty()) {
+                try {
+                    double amount = Double.parseDouble(cleanAmt);
+                    if ((amtStrRaw.contains("k") || amtStrRaw.contains("nghìn") || amtStrRaw.contains("ngàn")) && amount < 10000) {
+                        amount *= 1000;
+                    } else if ((amtStrRaw.contains("tr") || amtStrRaw.contains("triệu")) && amount < 1000) {
+                        amount *= 1000000;
+                    }
+                    return amount;
+                } catch (Exception ignored) {}
+            }
+        }
+        return 0;
+    }
+
+    private Object resolveCategory(Map<String, Object> txData, String originalText, List<Map<String, Object>> categories) {
+        Object categoryId = txData.get("category_id");
+        String description = String.valueOf(txData.getOrDefault("description", "")).toLowerCase();
+        
+        // Nếu AI trả về ID 1 (Lương) mặc định nhưng mô tả là chi tiêu
+        if (categoryId == null || String.valueOf(categoryId).equals("1")) {
+            if (description.contains("ăn") || description.contains("uống") || description.contains("sáng") || description.contains("trưa") || description.contains("tối")) {
+                return categories.stream().filter(c -> String.valueOf(c.get("name")).toLowerCase().contains("an uong")).map(c -> c.get("id")).findFirst().orElse(2L);
+            }
+            if (description.contains("xe") || description.contains("xăng") || description.contains("grab") || description.contains("đi lại")) {
+                return categories.stream().filter(c -> String.valueOf(c.get("name")).toLowerCase().contains("di chuyen")).map(c -> c.get("id")).findFirst().orElse(3L);
+            }
+            if (description.contains("mẹ cho") || description.contains("ba cho") || description.contains("được cho")) {
+                return 4L; // Thưởng/Khác (Income)
+            }
+        }
+        return categoryId != null ? categoryId : 5L; // Mặc định là Khác
     }
 }

@@ -6,9 +6,11 @@ C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\f
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\config\WebClientConfig.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\FinanceServiceApplication.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\model\CategoryDocument.java
+C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\model\ChatMessageDocument.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\model\CounterDocument.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\model\TransactionDocument.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\repo\CategoryRepository.java
+C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\repo\ChatMessageRepository.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\repo\TransactionRepository.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\service\AIService.java
 C:\Users\Admin\Vibe_Engineering\backend\finance-service\src\main\java\com\vibe\finance\service\NotificationClient.java
